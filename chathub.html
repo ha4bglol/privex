@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html lang="bg" class="dark">
+<head>
+    <!-- 
+        Chosen Palette: iOS Dark/Light Mode Inspired (Dynamic with CSS Variables)
+        - Background: --background-light (#F9F9F9) / --background-dark (#000000)
+        - Cards/Main UI: --card-light (#FFFFFF) / --card-dark (#1C1C1E)
+        - Primary Text: --text-light (#1D1D1F) / --text-dark (#F5F5F7)
+        - Subtle Text: --subtext-light (#6B7280) / --subtext-dark (#8E8E93)
+        - Accent/Buttons: --primary-color (#007AFF) - A vibrant blue for key actions.
+    -->
+    <!-- 
+        Application Structure Plan: A single-page application (SPA) with a view-based architecture controlled by user authentication state.
+        1. Login View: A centered, clean interface for anonymous sign-in. This is the entry point.
+        2. Main App View: Activated upon successful login. This view is a two-column layout:
+            - Left Sidebar: Displays the user's ID, a user search input, and a list of active chats. This provides primary navigation.
+            - Right Chat Panel: A content area that either shows a welcome screen or the active chat window.
+        3. Chat Window: Contains the message history, a header with the recipient's name, and a message composer at the bottom.
+        4. Modal System: A generic, overlay-based modal for showing errors, confirmations, or important information (like the user's ID).
+        This structure was chosen to be intuitive and familiar to users of modern messaging apps. It separates navigation (sidebar) from content (chat panel), allowing for a clear and focused user flow. State transitions are handled by a central `updateViewState` function.
+    -->
+    <!-- 
+        Visualization & Content Choices: The application's goal is to facilitate secure communication, not visualize data. Therefore, choices focus on UI presentation and interaction.
+        - Report Info: User Identity -> Goal: Inform/Share -> Presentation: Display user ID clearly in a modal and sidebar -> Interaction: A "Copy" button. -> Justification: The user ID is the primary way for users to find each other. Making it easy to copy and share is critical for usability.
+        - Report Info: Chat History -> Goal: Inform/Context -> Presentation: Styled chat bubbles aligned left/right. -> Interaction: Scrolling. -> Justification: This is the standard, universally understood convention for chat interfaces, immediately signaling who sent which message.
+        - Report Info: User list/Chat list -> Goal: Organize/Navigate -> Presentation: A vertically scrollable list with names and last message snippets. -> Interaction: Clicking an item opens the chat. -> Justification: Provides a scannable overview and quick access to all conversations.
+        - Report Info: E2EE Session Status -> Goal: Inform (Implicitly) -> Presentation: Loading spinners/disabled inputs during key exchange. -> Interaction: None. -> Justification: Provides crucial feedback that a secure process is happening in the background before a conversation can start.
+    -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>Privex - Сигурен чат</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/libsodium-wrappers@0.7.13/dist/libsodium.min.js" defer></script>
+
+    <style>
+      :root {
+        --primary-color: #007AFF;
+        --background-light: #F0F2F5;
+        --background-dark: #121212;
+        --card-light: #FFFFFF;
+        --card-dark: #1C1C1E;
+        --text-light: #050505;
+        --text-dark: #E4E6EB;
+        --subtext-light: #65676B;
+        --subtext-dark: #B0B3B8;
+        --hover-light: #F2F2F2;
+        --hover-dark: #3A3B3C;
+        --border-light: #CED0D4;
+        --border-dark: #3E4042;
+        --sender-bubble-light: #007AFF;
+        --sender-bubble-dark: #007AFF;
+        --receiver-bubble-light: #E4E6EB;
+        --receiver-bubble-dark: #3A3B3C;
+      }
+      body {
+        font-family: 'Inter', sans-serif;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+      }
+      .dark .dark\:bg-primary { background-color: var(--primary-color); }
+      .bg-primary { background-color: var(--primary-color); }
+      .text-primary { color: var(--primary-color); }
+
+      .ios-button {
+        background-color: var(--primary-color);
+        transition: background-color 0.2s ease-in-out;
+      }
+      .ios-button:hover {
+        background-color: #0056b3;
+      }
+
+      .chat-bubble-sender {
+        background-color: var(--sender-bubble-light);
+        color: white;
+      }
+      .dark .chat-bubble-sender {
+        background-color: var(--sender-bubble-dark);
+      }
+      .chat-bubble-receiver {
+        background-color: var(--receiver-bubble-light);
+        color: var(--text-light);
+      }
+      .dark .chat-bubble-receiver {
+        background-color: var(--receiver-bubble-dark);
+        color: var(--text-dark);
+      }
+      .loader {
+        border-top-color: var(--primary-color);
+        animation: spin 1s linear infinite;
+      }
+      @keyframes spin {
+        to { transform: rotate(360deg); }
+      }
+    </style>
+</head>
+
+<body class="bg-background-light dark:bg-background-dark text-text-light dark:text-text-dark transition-colors duration-300">
+
+    <div id="app-container" class="h-screen w-screen overflow-hidden">
+
+        <!-- Login View -->
+        <div id="login-view" class="h-full w-full flex items-center justify-center p-4">
+            <div class="text-center w-full max-w-sm">
+                <h1 class="text-5xl font-bold mb-2">Privex</h1>
+                <p class="text-lg text-subtext-light dark:text-subtext-dark mb-8">Сигурен и анонимен чат.</p>
+                <button id="anonymous-login-btn" class="ios-button text-white font-bold py-3 px-6 rounded-lg w-full flex items-center justify-center text-lg">
+                    <span class="btn-text">Влез анонимно</span>
+                    <div class="loader w-6 h-6 border-4 border-white/20 rounded-full hidden ml-3"></div>
+                </button>
+                 <p class="text-xs text-subtext-light dark:text-subtext-dark mt-4">
+                    С влизането си, вие се съгласявате да се генерират криптографски ключове, които се съхраняват само на вашето устройство.
+                </p>
+            </div>
+        </div>
+
+        <!-- Main App View -->
+        <div id="main-view" class="h-full w-full flex hidden">
+            <!-- Sidebar -->
+            <aside class="w-full md:w-1/3 lg:w-1/4 h-full bg-card-light dark:bg-card-dark border-r border-border-light dark:border-border-dark flex flex-col" id="sidebar">
+                <header class="p-4 border-b border-border-light dark:border-border-dark flex items-center justify-between">
+                    <h2 class="text-xl font-bold">Чатове</h2>
+                    <button id="show-my-id-btn" class="p-2 rounded-full hover:bg-hover-light dark:hover:bg-hover-dark">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                    </button>
+                </header>
+                <div class="p-4">
+                    <input id="user-search-input" type="text" placeholder="Търси потребител по ID..." class="w-full p-2 rounded-lg bg-background-light dark:bg-background-dark border border-border-light dark:border-border-dark focus:ring-2 focus:ring-primary focus:outline-none">
+                </div>
+                <div id="user-search-results" class="px-4"></div>
+                <nav id="chat-list" class="flex-1 overflow-y-auto"></nav>
+            </aside>
+            
+            <!-- Chat Panel -->
+            <main class="flex-1 h-full flex flex-col bg-background-light dark:bg-background-dark" id="chat-panel">
+                 <!-- Welcome Screen -->
+                <div id="welcome-screen" class="flex-1 flex flex-col items-center justify-center text-center p-8">
+                    <div class="w-24 h-24 bg-primary/10 rounded-full flex items-center justify-center mb-6">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>
+                    </div>
+                    <h2 class="text-2xl font-bold mb-2">Добре дошли в Privex</h2>
+                    <p class="text-subtext-light dark:text-subtext-dark max-w-sm">Изберете чат, за да започнете, или намерете потребител по неговото ID, за да започнете нова сигурна комуникация.</p>
+                </div>
+                <!-- Chat Window -->
+                <div id="chat-window" class="flex-1 flex-col hidden">
+                    <header class="p-4 bg-card-light dark:bg-card-dark border-b border-border-light dark:border-border-dark flex items-center">
+                        <h3 id="chat-header-name" class="text-lg font-bold"></h3>
+                    </header>
+                    <div id="message-list" class="flex-1 p-4 overflow-y-auto flex flex-col-reverse">
+                        <div class="space-y-4"></div>
+                    </div>
+                    <div id="chat-session-loader" class="m-auto text-center p-4 hidden">
+                         <div class="loader w-8 h-8 border-4 border-primary/20 rounded-full mx-auto mb-2"></div>
+                         <p class="text-subtext-light dark:text-subtext-dark">Създава се сигурна сесия...</p>
+                    </div>
+                    <footer id="message-composer" class="p-4 bg-card-light dark:bg-card-dark border-t border-border-light dark:border-border-dark">
+                        <div class="flex items-center">
+                            <input id="message-input" type="text" placeholder="Напишете съобщение..." class="w-full p-3 rounded-lg bg-background-light dark:bg-background-dark border border-border-light dark:border-border-dark focus:ring-2 focus:ring-primary focus:outline-none">
+                            <button id="send-message-btn" class="ml-3 p-3 rounded-full bg-primary text-white ios-button">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
+                            </button>
+                        </div>
+                    </footer>
+                </div>
+            </main>
+        </div>
+    </div>
+    
+    <!-- Modal -->
+    <div id="modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 hidden z-50">
+        <div class="bg-card-light dark:bg-card-dark rounded-xl shadow-lg w-full max-w-sm text-center p-6">
+            <h3 id="modal-title" class="text-lg font-bold mb-2"></h3>
+            <p id="modal-body" class="text-sm text-subtext-light dark:text-subtext-dark mb-6 whitespace-pre-wrap"></p>
+            <div id="modal-actions" class="flex flex-col space-y-2"></div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.17.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/9.17.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, setDoc, addDoc, onSnapshot, collection, query, where, getDocs, serverTimestamp, orderBy, limit } from "https://www.gstatic.com/firebasejs/9.17.1/firebase-firestore.js";
+
+        let firebaseConfig;
+        try {
+            if (typeof __firebase_config === 'undefined' || !__firebase_config) {
+                throw new Error("Firebase config variable is not available.");
+            }
+            firebaseConfig = JSON.parse(__firebase_config);
+        } catch (e) {
+            console.error("Error parsing Firebase config:", e);
+            const loginView = document.getElementById('login-view');
+            loginView.innerHTML = `<div class="text-center w-full max-w-sm text-red-500 p-4"><h1 class="text-3xl font-bold mb-2">Грешка в конфигурацията</h1><p class="text-lg">Не може да се зареди конфигурацията на Firebase. Приложението не може да продължи.</p></div>`;
+            throw new Error("Stopping execution due to invalid Firebase config.");
+        }
+        
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        let currentUser = null;
+        let activeChatId = null;
+        let chatUnsubscribe = null;
+        let chatListUnsubscribe = null;
+        const chatSessions = new Map();
+
+        const loginView = document.getElementById('login-view');
+        const mainView = document.getElementById('main-view');
+        const anonLoginBtn = document.getElementById('anonymous-login-btn');
+        const userSearchInput = document.getElementById('user-search-input');
+        const userSearchResults = document.getElementById('user-search-results');
+        const showMyIdBtn = document.getElementById('show-my-id-btn');
+        const chatListEl = document.getElementById('chat-list');
+        const welcomeScreen = document.getElementById('welcome-screen');
+        const chatWindow = document.getElementById('chat-window');
+        const chatHeaderName = document.getElementById('chat-header-name');
+        const messageList = document.getElementById('message-list').querySelector('.space-y-4');
+        const messageInput = document.getElementById('message-input');
+        const sendMessageBtn = document.getElementById('send-message-btn');
+        const messageComposer = document.getElementById('message-composer');
+        const chatSessionLoader = document.getElementById('chat-session-loader');
+
+
+        // --- UI & State Management ---
+
+        function setLoadingState(button, isLoading) {
+            const btnText = button.querySelector('.btn-text');
+            const loader = button.querySelector('.loader');
+            if (isLoading) {
+                button.disabled = true;
+                if (btnText) btnText.classList.add('hidden');
+                if (loader) loader.classList.remove('hidden');
+            } else {
+                button.disabled = false;
+                if (btnText) btnText.classList.remove('hidden');
+                if (loader) loader.classList.add('hidden');
+            }
+        }
+
+        function updateViewState(state) {
+            loginView.classList.toggle('hidden', state !== 'login');
+            mainView.classList.toggle('hidden', state !== 'main');
+            mainView.classList.toggle('flex', state === 'main');
+        }
+
+        function showModal(title, body, actions = [{ text: 'OK', class: 'ios-button text-white font-bold py-2 px-4 rounded-lg', handler: () => {} }]) {
+            document.getElementById('modal-title').textContent = title;
+            document.getElementById('modal-body').textContent = body;
+            const actionsContainer = document.getElementById('modal-actions');
+            actionsContainer.innerHTML = '';
+            actions.forEach(action => {
+                const button = document.createElement('button');
+                button.textContent = action.text;
+                button.className = action.class;
+                button.onclick = () => {
+                    document.getElementById('modal').classList.add('hidden');
+                    if(action.handler) action.handler();
+                };
+                actionsContainer.appendChild(button);
+            });
+            document.getElementById('modal').classList.remove('hidden');
+        }
+        
+        function copyToClipboard(text) {
+            const ta = document.createElement('textarea');
+            ta.value = text;
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            document.body.removeChild(ta);
+            showModal('Копирано', 'Вашето ID е копирано в клипборда.');
+        }
+
+
+        // --- E2EE Crypto Service ---
+
+        const CryptoService = {
+            isReady: false,
+            _sodium: null,
+            _db: null,
+
+            async init() {
+                if (this.isReady) return;
+                await new Promise(resolve => {
+                    const interval = setInterval(() => {
+                        if (window.sodium && window.sodium.to_base64) {
+                            clearInterval(interval);
+                            this._sodium = window.sodium;
+                            this.isReady = true;
+                            resolve();
+                        }
+                    }, 50);
+                });
+                await this._initDB();
+            },
+
+            _initDB() {
+                return new Promise((resolve, reject) => {
+                    const request = indexedDB.open("PrivexCryptoStore", 1);
+                    request.onerror = (event) => reject("Database error: " + event.target.errorCode);
+                    request.onsuccess = (event) => {
+                        this._db = event.target.result;
+                        resolve();
+                    };
+                    request.onupgradeneeded = (event) => {
+                        const db = event.target.result;
+                        db.createObjectStore("keys", { keyPath: "type" });
+                        db.createObjectStore("sessions", { keyPath: "peerId" });
+                    };
+                });
+            },
+
+            _getStore(storeName, mode) {
+                return this._db.transaction(storeName, mode).objectStore(storeName);
+            },
+            
+            async _saveKey(key) {
+                return new Promise((resolve, reject) => {
+                    const request = this._getStore('keys', 'readwrite').put(key);
+                    request.onsuccess = () => resolve();
+                    request.onerror = (event) => reject(event.target.error);
+                });
+            },
+
+            async _getKey(type) {
+                return new Promise((resolve, reject) => {
+                    const request = this._getStore('keys', 'readonly').get(type);
+                    request.onsuccess = (event) => resolve(event.target.result);
+                    request.onerror = (event) => reject(event.target.error);
+                });
+            },
+
+            toBase64: (data) => window.sodium.to_base64(data),
+            fromBase64: (data) => window.sodium.from_base64(data),
+
+            async identityCheck(userId) {
+                if (!this.isReady) await this.init();
+                let identityKeys = await this._getKey('identity');
+                let preKey = await this._getKey('preKey');
+
+                if (identityKeys && preKey) return;
+
+                identityKeys = this._sodium.crypto_kx_keypair();
+                preKey = this._sodium.crypto_kx_keypair();
+                
+                await this._saveKey({ type: 'identity', ...identityKeys });
+                await this._saveKey({ type: 'preKey', ...preKey });
+
+                const publicKeys = {
+                    identityKey: this.toBase64(identityKeys.publicKey),
+                    preKey: this.toBase64(preKey.publicKey),
+                };
+
+                await setDoc(doc(db, "users", userId), { publicKeys }, { merge: true });
+            },
+
+            async initSession(peerId) {
+                if (!this.isReady) await this.init();
+
+                let session = await this.getSession(peerId);
+                if (session) return session;
+
+                const peerDoc = await getDoc(doc(db, "users", peerId));
+                if (!peerDoc.exists() || !peerDoc.data().publicKeys) {
+                    throw new Error("User or keys not found");
+                }
+                const peerPublicKeys = peerDoc.data().publicKeys;
+
+                const identityKeyPair = await this._getKey('identity');
+                
+                const clientKeys = this._sodium.crypto_kx_client_session_keys(
+                    identityKeyPair.publicKey,
+                    identityKeyPair.privateKey,
+                    this.fromBase64(peerPublicKeys.identityKey)
+                );
+
+                const preKey = await this._getKey('preKey');
+                const sharedKeys = this._sodium.crypto_kx_server_session_keys(
+                    preKey.publicKey,
+                    preKey.privateKey,
+                    this.fromBase64(peerPublicKeys.identityKey)
+                );
+                
+                session = { 
+                    peerId: peerId, 
+                    sendKey: this.toBase64(clientKeys.sharedTx),
+                    receiveKey: this.toBase64(sharedKeys.sharedRx)
+                };
+
+                await this.saveSession(session);
+                return session;
+            },
+            
+            async saveSession(session) {
+                return new Promise((resolve, reject) => {
+                    const request = this._getStore('sessions', 'readwrite').put(session);
+                    request.onsuccess = () => resolve();
+                    request.onerror = (event) => reject(event.target.error);
+                });
+            },
+
+            async getSession(peerId) {
+                return new Promise((resolve, reject) => {
+                    const request = this._getStore('sessions', 'readonly').get(peerId);
+                    request.onsuccess = (event) => resolve(event.target.result);
+                    request.onerror = (event) => reject(event.target.error);
+                });
+            },
+
+            async encrypt(peerId, plaintext) {
+                const session = await this.getSession(peerId);
+                if (!session) throw new Error("No secure session");
+                
+                const sendKey = this.fromBase64(session.sendKey);
+                const nonce = this._sodium.randombytes_buf(this._sodium.crypto_secretbox_NONCEBYTES);
+                const ciphertext = this._sodium.crypto_secretbox_easy(plaintext, nonce, sendKey);
+
+                return {
+                    nonce: this.toBase64(nonce),
+                    ciphertext: this.toBase64(ciphertext)
+                };
+            },
+
+            async decrypt(peerId, encryptedData) {
+                const session = await this.getSession(peerId);
+                if (!session) {
+                    console.error("No session found for peer, attempting to create one");
+                    await this.initSession(peerId);
+                    const newSession = await this.getSession(peerId);
+                    if(!newSession) throw new Error("Could not create secure session for decryption.");
+                    return this.decrypt(peerId, encryptedData);
+                }
+
+                const receiveKey = this.fromBase64(session.receiveKey);
+                const nonce = this.fromBase64(encryptedData.nonce);
+                const ciphertext = this.fromBase64(encryptedData.ciphertext);
+                
+                const decrypted = this._sodium.crypto_secretbox_open_easy(ciphertext, nonce, receiveKey);
+                return this._sodium.to_string(decrypted);
+            }
+        };
+
+
+        // --- Firestore & Chat Logic ---
+        async function handleUserSearch() {
+            const searchTerm = userSearchInput.value.trim();
+            userSearchResults.innerHTML = '';
+            if (searchTerm.length < 5 || searchTerm === currentUser.uid) return;
+
+            try {
+                const userDoc = await getDoc(doc(db, "users", searchTerm));
+                if (userDoc.exists()) {
+                    const resultEl = document.createElement('div');
+                    resultEl.className = 'p-2 my-2 rounded-lg hover:bg-hover-light dark:hover:bg-hover-dark cursor-pointer';
+                    resultEl.textContent = `Намерен потребител: ${searchTerm.substring(0, 8)}...`;
+                    resultEl.onclick = () => startNewChat(userDoc.id);
+                    userSearchResults.appendChild(resultEl);
+                } else {
+                     userSearchResults.innerHTML = `<div class="p-2 text-subtext-light dark:text-subtext-dark">Няма намерен потребител.</div>`;
+                }
+            } catch (error) {
+                console.error("Error searching for user:", error);
+            }
+        }
+        
+        async function startNewChat(peerId) {
+            userSearchInput.value = '';
+            userSearchResults.innerHTML = '';
+
+            const chatId = [currentUser.uid, peerId].sort().join('_');
+            const chatDocRef = doc(db, "chats", chatId);
+            const chatDoc = await getDoc(chatDocRef);
+            
+            let otherUser = { id: peerId, username: `User ${peerId.substring(0, 5)}...` };
+
+            if (!chatDoc.exists()) {
+                const newChatData = {
+                    participants: [currentUser.uid, peerId],
+                    createdAt: serverTimestamp(),
+                    lastMessage: null,
+                };
+                await setDoc(chatDocRef, newChatData);
+            }
+            openChat({ id: chatId, otherUser });
+        }
+        
+        async function openChat(chat) {
+            if (activeChatId === chat.id) return;
+
+            welcomeScreen.classList.add('hidden');
+            chatWindow.classList.remove('hidden');
+            chatWindow.classList.add('flex');
+
+            activeChatId = chat.id;
+            messageList.innerHTML = '';
+            chatHeaderName.textContent = chat.otherUser.username;
+
+            if (chatUnsubscribe) chatUnsubscribe();
+            
+            chatSessionLoader.classList.remove('hidden');
+            messageComposer.classList.add('hidden');
+
+            try {
+                await CryptoService.initSession(chat.otherUser.id);
+                chatSessionLoader.classList.add('hidden');
+                messageComposer.classList.remove('hidden');
+            } catch(e) {
+                console.error("Session init failed:", e);
+                chatSessionLoader.innerHTML = `<p class="text-red-500">Неуспешно създаване на сигурна сесия.</p>`;
+                return;
+            }
+
+            const messagesRef = collection(db, "chats", chat.id, "messages");
+            const q = query(messagesRef, orderBy("createdAt", "desc"), limit(50));
+            
+            chatUnsubscribe = onSnapshot(q, (snapshot) => {
+                snapshot.docChanges().forEach(async (change) => {
+                    if (change.type === "added") {
+                        const msgData = change.doc.data();
+                        
+                        try {
+                           const decryptedText = await CryptoService.decrypt(msgData.senderId, msgData.content);
+                           renderMessage(decryptedText, msgData.senderId === currentUser.uid);
+                        } catch(e) {
+                            console.error("Decryption failed:", e);
+                            renderMessage("[Съобщението не може да бъде декриптирано]", msgData.senderId === currentUser.uid, true);
+                        }
+                    }
+                });
+            });
+        }
+        
+        function renderMessage(text, isSender, isError = false) {
+             const messageContainer = document.createElement('div');
+             messageContainer.className = `flex items-end gap-2 ${isSender ? 'justify-end' : 'justify-start'}`;
+             
+             const bubble = document.createElement('div');
+             bubble.className = `max-w-xs md:max-w-md p-3 rounded-2xl ${isSender ? 'chat-bubble-sender' : 'chat-bubble-receiver'}`;
+             if(isError) bubble.classList.add('bg-red-500', 'text-white');
+             
+             const p = document.createElement('p');
+             p.className = 'text-sm';
+             p.textContent = text;
+             
+             bubble.appendChild(p);
+             messageContainer.appendChild(bubble);
+
+             messageList.insertBefore(messageContainer, messageList.firstChild);
+        }
+
+        async function sendMessage() {
+            const text = messageInput.value.trim();
+            if (!text || !activeChatId) return;
+
+            const tempId = `temp_${Date.now()}`;
+            const originalText = text;
+            messageInput.value = '';
+            renderMessage(originalText, true);
+
+            try {
+                const participants = activeChatId.split('_');
+                const peerId = participants.find(p => p !== currentUser.uid);
+
+                const encryptedContent = await CryptoService.encrypt(peerId, originalText);
+                
+                const messagesRef = collection(db, "chats", activeChatId, "messages");
+                await addDoc(messagesRef, {
+                    content: encryptedContent,
+                    senderId: currentUser.uid,
+                    createdAt: serverTimestamp()
+                });
+                await setDoc(doc(db, "chats", activeChatId), { lastMessage: { text: 'Криптирано съобщение', createdAt: serverTimestamp() }}, { merge: true });
+
+            } catch (error) {
+                console.error("Error sending message:", error);
+                showModal('Грешка', 'Съобщението не можа да бъде изпратено.');
+            }
+        }
+        
+        function listenForChats(userId) {
+            if (chatListUnsubscribe) chatListUnsubscribe();
+
+            const chatsRef = collection(db, "chats");
+            const q = query(chatsRef, where("participants", "array-contains", userId));
+            
+            chatListUnsubscribe = onSnapshot(q, (snapshot) => {
+                chatListEl.innerHTML = '';
+                if (snapshot.empty) {
+                     chatListEl.innerHTML = `<div class="p-4 text-center text-subtext-light dark:text-subtext-dark">Нямате активни чатове. Намерете потребител, за да започнете.</div>`;
+                     return;
+                }
+                snapshot.docs.forEach(docSnap => {
+                    const chatData = docSnap.data();
+                    const otherUserId = chatData.participants.find(p => p !== userId);
+                    const chatListItem = document.createElement('div');
+                    chatListItem.className = 'p-4 border-b border-border-light dark:border-border-dark cursor-pointer hover:bg-hover-light dark:hover:bg-hover-dark flex items-center';
+                    chatListItem.onclick = () => openChat({ id: docSnap.id, otherUser: { id: otherUserId, username: `User ${otherUserId.substring(0,5)}...` } });
+                    
+                    chatListItem.innerHTML = `
+                        <div class="flex-1">
+                            <p class="font-bold">User ${otherUserId.substring(0,5)}...</p>
+                            <p class="text-sm text-subtext-light dark:text-subtext-dark truncate">${chatData.lastMessage?.text || 'Няма съобщения'}</p>
+                        </div>
+                    `;
+                    chatListEl.appendChild(chatListItem);
+                });
+            });
+        }
+
+
+        // --- Event Listeners & Initialization ---
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                currentUser = user;
+                updateViewState('main');
+                setLoadingState(anonLoginBtn, false);
+                try {
+                    await CryptoService.identityCheck(user.uid);
+                    listenForChats(user.uid);
+                } catch(e) {
+                     console.error("Crypto init failed:", e);
+                     showModal('Критична грешка', 'Не може да се инициализира криптографският модул. Моля, презаредете страницата.');
+                }
+            } else {
+                currentUser = null;
+                updateViewState('login');
+                if (chatListUnsubscribe) chatListUnsubscribe();
+                if (chatUnsubscribe) chatUnsubscribe();
+                activeChatId = null;
+            }
+        });
+        
+        anonLoginBtn.addEventListener('click', () => {
+            setLoadingState(anonLoginBtn, true);
+            signInAnonymously(auth).catch(error => {
+                console.error("Anonymous sign-in error:", error);
+                setLoadingState(anonLoginBtn, false);
+                showModal('Грешка', 'Възникна грешка при анонимния вход.');
+            });
+        });
+
+        showMyIdBtn.addEventListener('click', () => {
+            if (!currentUser) return;
+            showModal(
+                'Вашето уникално ID', 
+                `Споделете това ID с други, за да могат да започнат чат с вас:\n\n${currentUser.uid}`,
+                [
+                    { text: 'Копирай ID', class: 'ios-button text-white font-bold py-2 px-4 rounded-lg', handler: () => copyToClipboard(currentUser.uid) },
+                    { text: 'Затвори', class: 'bg-gray-200 dark:bg-gray-600 text-text-light dark:text-text-dark font-bold py-2 px-4 rounded-lg', handler: () => {} }
+                ]
+            );
+        });
+
+        userSearchInput.addEventListener('input', handleUserSearch);
+        sendMessageBtn.addEventListener('click', sendMessage);
+        messageInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+
+        async function autoSignIn() {
+            if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                try {
+                    setLoadingState(anonLoginBtn, true);
+                    const loginBtnText = anonLoginBtn.querySelector('.btn-text');
+                    if(loginBtnText) loginBtnText.textContent = 'Автентикация...';
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } catch (error) {
+                    console.error("Custom token sign-in error:", error);
+                    setLoadingState(anonLoginBtn, false);
+                    const loginBtnText = anonLoginBtn.querySelector('.btn-text');
+                    if(loginBtnText) loginBtnText.textContent = 'Влез анонимно';
+                    showModal('Грешка при автентикация', 'Автоматичният вход неуспешен. Моля, влезте анонимно.');
+                }
+            }
+        }
+        autoSignIn();
+
+    </script>
+</body>
+</html>
