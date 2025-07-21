@@ -5,43 +5,53 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Nexo - Първокачествено бельо онлайн</title>
     
-    <!-- Tailwind CSS for styling -->
     <script src="https://cdn.tailwindcss.com"></script>
     
-    <!-- Google Fonts: Inter -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
-    <!-- Font Awesome for icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 
     <style>
-        /* Custom styles */
+        /* General Custom Styles */
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #ffffff; /* White background */
+            background-color: #f9fafb; /* Lighter Gray background */
             color: #1f2937; /* Gray-800 text */
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
         }
         
-        /* Hide scrollbar for a cleaner look */
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        .container {
+             background-color: #ffffff;
+             box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+        }
 
-        /* Simple animation for view transitions */
+        /* --- UI Animations & Transitions --- */
+
+        /* View transition animation */
         .view {
             display: none;
-            animation: fadeIn 0.5s;
         }
         .view.active {
             display: block;
+            animation: viewFadeIn 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
         }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
+        @keyframes viewFadeIn {
+            from { opacity: 0; transform: translateY(15px) scale(0.98); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
         }
-        
-        /* Cart bubble style */
+
+        /* Product image cross-fade animation */
+        #product-main-image {
+            transition: opacity 0.4s ease-in-out;
+        }
+        #product-main-image.fade-out {
+            opacity: 0;
+        }
+
+        /* Cart bubble animation */
         #cart-bubble {
             position: absolute;
             top: -8px;
@@ -57,27 +67,53 @@
             justify-content: center;
             font-weight: bold;
             transform: scale(0);
-            transition: transform 0.2s ease-in-out;
+            transition: transform 0.3s cubic-bezier(0.18, 0.89, 0.32, 1.28); /* Bounce effect */
         }
         #cart-bubble.visible {
             transform: scale(1);
         }
+        
+        /* Custom "Add to Cart" Toast Notification */
+        #toast-notification {
+            position: fixed;
+            bottom: -100px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #2c3e50;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            display: flex;
+            align-items: center;
+            font-weight: 500;
+            transition: bottom 0.5s cubic-bezier(0.68, -0.55, 0.27, 1.55);
+            z-index: 1000;
+        }
+        #toast-notification.show {
+            bottom: 20px;
+        }
 
-        /* Custom button style */
+        /* Custom button styles */
         .btn-primary {
             background-color: #fbcfe8; /* Pink-200 */
             color: #831843; /* Pink-800 */
             font-weight: 600;
             border-radius: 0.5rem;
             padding: 0.75rem 1.5rem;
-            transition: background-color 0.2s;
+            transition: all 0.2s ease-out;
             box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+            transform: scale(1);
         }
         .btn-primary:hover {
             background-color: #f9a8d4; /* Pink-300 */
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+        }
+        .btn-primary:active {
+             transform: scale(0.97);
         }
 
-        /* Style for the checkout button */
+        /* Checkout button style */
         .btn-checkout {
             background-color: #db2777; /* Pink-600 */
             color: white;
@@ -86,44 +122,42 @@
         .btn-checkout:hover {
             background-color: #be185d; /* Pink-700 */
         }
+        
+        /* Strikethrough for old price */
+        .old-price {
+            text-decoration: line-through;
+            color: #9ca3af; /* Gray-400 */
+            font-weight: normal;
+            margin-right: 8px;
+        }
     </style>
 </head>
 <body class="text-gray-800">
 
-    <!-- Main Container -->
     <div class="container mx-auto max-w-lg p-4 min-h-screen flex flex-col">
 
-        <!-- Header -->
         <header class="flex justify-center items-center mb-6 pb-4 border-b border-gray-200 relative">
-            <!-- Centered Logo -->
             <div class="cursor-pointer" onclick="navigateTo('products')">
                 <img src="https://i.imgur.com/XwlYkKn.jpeg" alt="Nexo Logo" class="h-10" onerror="this.onerror=null;this.src='https://placehold.co/120x40/000000/FFFFFF?text=Nexo';">
             </div>
-            <!-- Cart Icon -->
             <div class="absolute right-0">
-                <button onclick="navigateTo('cart')" class="text-gray-500 hover:text-pink-600 transition">
+                <button onclick="navigateTo('cart')" class="relative text-gray-500 hover:text-pink-600 transition-colors duration-200">
                     <i class="fas fa-shopping-cart fa-lg"></i>
                     <span id="cart-bubble">0</span>
                 </button>
             </div>
         </header>
 
-        <!-- Main Content Area -->
         <main class="flex-grow">
-            <!-- Products View -->
             <div id="products-view" class="view active">
                 <h2 class="text-xl font-semibold mb-4 text-center">Нашите продукти</h2>
                 <div id="product-list" class="grid grid-cols-2 gap-4">
-                    <!-- Products will be injected here by JavaScript -->
-                </div>
+                    </div>
             </div>
 
-            <!-- Product Detail View -->
             <div id="product-detail-view" class="view">
-                <!-- Product detail will be injected here -->
-            </div>
+                </div>
 
-            <!-- Cart View -->
             <div id="cart-view" class="view">
                 <h2 class="text-xl font-semibold mb-4">Вашата количка</h2>
                 <div id="cart-items-container"></div>
@@ -135,25 +169,24 @@
                 </div>
             </div>
 
-            <!-- Checkout View -->
             <div id="checkout-view" class="view">
                 <h2 class="text-xl font-semibold mb-4">Данни за доставка</h2>
                 <form id="checkout-form">
                     <div class="mb-4">
                         <label for="name" class="block text-sm font-medium text-gray-700 mb-1">Име и Фамилия</label>
-                        <input type="text" id="name" name="name" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-pink-500 focus:border-pink-500" placeholder="Иван Иванов">
+                        <input type="text" id="name" name="name" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-pink-500 focus:border-pink-500 transition-shadow">
                     </div>
                     <div class="mb-4">
                         <label for="address" class="block text-sm font-medium text-gray-700 mb-1">Адрес (град, улица, номер)</label>
-                        <input type="text" id="address" name="address" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-pink-500 focus:border-pink-500" placeholder="гр. София, бул. Витоша 1">
+                        <input type="text" id="address" name="address" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-pink-500 focus:border-pink-500 transition-shadow">
                     </div>
                     <div class="mb-4">
                         <label for="phone" class="block text-sm font-medium text-gray-700 mb-1">Телефонен номер</label>
-                        <input type="tel" id="phone" name="phone" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-pink-500 focus:border-pink-500" placeholder="0888123456">
+                        <input type="tel" id="phone" name="phone" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-pink-500 focus:border-pink-500 transition-shadow">
                     </div>
                     <div class="mb-4">
                         <label for="email" class="block text-sm font-medium text-gray-700 mb-1">Имейл адрес</label>
-                        <input type="email" id="email" name="email" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-pink-500 focus:border-pink-500" placeholder="ivan.ivanov@email.com">
+                        <input type="email" id="email" name="email" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-pink-500 focus:border-pink-500 transition-shadow">
                     </div>
                     <button type="submit" class="w-full mt-4 btn-primary btn-checkout flex items-center justify-center">
                         <i class="fab fa-stripe-s fa-lg mr-2"></i>
@@ -162,12 +195,9 @@
                 </form>
             </div>
             
-            <!-- Order Confirmation / Customer Info View -->
             <div id="confirmation-view" class="view text-center">
-                 <!-- Confirmation details will be injected here -->
-            </div>
+                 </div>
 
-            <!-- Terms View -->
             <div id="terms-view" class="view">
                 <button onclick="navigateTo('products')" class="mb-4 text-pink-600 hover:underline">&larr; Обратно към магазина</button>
                 <div class="prose max-w-none">
@@ -184,7 +214,6 @@
                 </div>
             </div>
 
-            <!-- Privacy View -->
             <div id="privacy-view" class="view">
                 <button onclick="navigateTo('products')" class="mb-4 text-pink-600 hover:underline">&larr; Обратно към магазина</button>
                 <div class="prose max-w-none">
@@ -204,41 +233,31 @@
             </div>
         </main>
 
-        <!-- Footer -->
         <footer class="mt-8 pt-6 border-t border-gray-200 text-center text-gray-500">
             <div class="mb-4">
                 <img src="https://i.imgur.com/XwlYkKn.jpeg" alt="Nexo Logo" class="h-8 mx-auto" onerror="this.onerror=null;this.src='https://placehold.co/100x32/000000/FFFFFF?text=Nexo';">
             </div>
             <div class="flex justify-center space-x-6 mb-4">
-                <a href="#" onclick="event.preventDefault(); navigateTo('terms')" class="hover:text-pink-600 transition">Общи условия</a>
-                <a href="#" onclick="event.preventDefault(); navigateTo('privacy')" class="hover:text-pink-600 transition">Политика за поверителност</a>
+                <a href="#" onclick="event.preventDefault(); navigateTo('terms')" class="hover:text-pink-600 transition-colors">Общи условия</a>
+                <a href="#" onclick="event.preventDefault(); navigateTo('privacy')" class="hover:text-pink-600 transition-colors">Политика за поверителност</a>
             </div>
             <p class="text-sm">&copy; 2025 Nexo. Всички права запазени.</p>
         </footer>
     </div>
+    
+    <div id="toast-notification">
+        <i class="fas fa-check-circle mr-3 text-green-400"></i>
+        <span id="toast-message"></span>
+    </div>
 
-    <!-- Firebase SDK -->
+
     <script type="module">
         // Import Firebase modules
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         
         // --- ИНСТРУКЦИИ ЗА FIREBASE ---
-        // Stripe Sandbox (демо режимът) работи автоматично. Не е нужна настройка.
-        // За да работи базата данни за поръчки, следвайте тези стъпки:
-        //
-        // 1. Отидете на https://console.firebase.google.com/
-        // 2. Създайте нов проект (Add project).
-        // 3. Влезте в настройките на проекта (зъбното колело горе вляво -> Project settings).
-        // 4. В таб "General", най-долу, намерете секцията "Your apps".
-        // 5. Кликнете върху иконата за уеб приложение (</>).
-        // 6. Дайте име на приложението и кликнете "Register app".
-        // 7. Firebase ще ви покаже обект `firebaseConfig`. КОПИРАЙТЕ го.
-        // 8. ЗАМЕНЕТЕ целия обект `firebaseConfig` по-долу с този, който копирахте.
-        // 9. В конзолата на Firebase, от менюто вляво, отидете на Build -> Firestore Database.
-        // 10. Натиснете "Create database" и изберете да стартирате в **TEST MODE**.
-        //
-        // ВАЖНО: Сайтът НЯМА да работи без правилна конфигурация!
+        // ЗАМЕНЕТЕ целия обект `firebaseConfig` по-долу с този от вашата Firebase конзола.
         const firebaseConfig = {
             apiKey: "AIzaSyAQNGbC316uyMsCTvWBwQv_BblqDxvKsMo",
             authDomain: "nexo-shop.firebaseapp.com",
@@ -272,14 +291,24 @@
         // --- APPLICATION STATE ---
         const state = {
             products: [
-                { id: 1, name: 'VIP колекция-бикини', price: 59.90, description: 'Топ дамски бикини от професионални дизайнери – VIP колекция Лято 2025 с изискан стил, прецизна изработка и луксозни материи за съвършена визия на плажа.', images: ['https://img.kwcdn.com/product/Fancyalgo/VirtualModelMatting/f644211e0493d68f97c2382b7c888029.jpg?imageView2/2/w/800/q/70/format/webp', 'https://img.kwcdn.com/product/Fancyalgo/VirtualModelMatting/994f480066dc824c3a661a4e1f4df4f5.jpg?imageView2/2/w/800/q/70/format/webp', 'https://img.kwcdn.com/product/Fancyalgo/VirtualModelMatting/81b78cb8a5c50d38bcd9b15bc929f73b.jpg?imageView2/2/w/800/q/70/format/webp', 'https://img.kwcdn.com/product/Fancyalgo/VirtualModelMatting/ada0738e3f40b2e8fc12088fea5f0ac6.jpg?imageView2/2/w/800/q/70/format/webp', 'https://img.kwcdn.com/product/Fancyalgo/VirtualModelMatting/4deb037998cca8a9d5b53ec11d6806fa.jpg?imageView2/2/w/800/q/70/format/webp'] },
-                { id: 2, name: 'READY 2 PLAY бикини', price: 89.90, description: 'Ready to Play бикини – свежи, удобни и стилни модели от професионални дизайнери, създадени за активни и уверени дами през 2025.', images: ['https://img.kwcdn.com/product/fancy/d7f09347-4de2-4f82-bbc5-8b9ef291247b.jpg?imageView2/2/w/800/q/70/format/webp', 'https://img.kwcdn.com/product/fancy/26382316-0197-4712-9872-c839515975be.jpg?imageView2/2/w/800/q/70/format/webp', 'https://img.kwcdn.com/product/fancy/6e0391e4-75ee-4cfb-9e1e-aef2aef688da.jpg?imageView2/2/w/800/q/70/format/webp', 'https://img.kwcdn.com/product/fancy/1d89bdfe-f53e-4b0d-8f20-83425b3d44f5.jpg?imageView2/2/w/800/q/70/format/webp'] },
-                { id: 3, name: 'PRIVATE колекция', price: 119.90, description: 'Единствена по рода си private колекция 2025 – ексклузивни и уникални модели, създадени с внимание към всеки детайл, които комбинират изискан стил, висококачествени материи и ненадмината изработка за неповторима визия и комфорт.', images: ['https://img.kwcdn.com/product/fancy/9b72df96-7e56-41a3-ac13-68f96c3bd131.jpg?imageView2/2/w/800/q/70/format/webp', 'https://img.kwcdn.com/product/fancy/22254036-0e8b-44e4-94af-2c5fcf44ed73.jpg?imageView2/2/w/800/q/70/format/webp', 'https://img.kwcdn.com/product/fancy/9b72df96-7e56-41a3-ac13-68f96c3bd131.jpg?imageView2/2/w/800/q/70/format/webp', 'https://img.kwcdn.com/product/fancy/7a606875-f1d9-4476-9ddb-9f8b274b9674.jpg?imageView2/2/w/800/q/70/format/webp', 'https://img.kwcdn.com/product/fancy/052d7e2f-d169-46c7-9f67-0d11666458e1.jpg?imageView2/2/w/800/q/70/format/webp'] },
-                { id: 4, name: 'ЗА НЕГО И НЕЯ', price: 99.90, description: 'ЗА НЕГО И НЕЯ — СТИЛНИ И УДОБНИ МОДЕЛИ, СЪЗДАДЕНИ ДА ПОДЧЕРТАЯТ ИНДИВИДУАЛНОСТТА И НА ДВАМАТА.', images: ['https://placehold.co/400x400/fbcfe8/831843?text=Nexo+1', 'https://placehold.co/400x400/fbcfe8/831843?text=Nexo+2', 'https://placehold.co/400x400/fbcfe8/831843?text=Nexo+3', 'https://placehold.co/400x400/fbcfe8/831843?text=Nexo+4', 'https://placehold.co/400x400/fbcfe8/831843?text=Nexo+5'] },
-                { id: 5, name: 'NEXXXO ISLAND КОЛЕКЦИЯ', price: 219.90, description: '4 броя бельо от най-новата колекция + 2 чифта комплект за нея, VIP качество и топ изработка от италиански дизайнери.', images: ['https://placehold.co/400x400/fbcfe8/831843?text=Nexo+1', 'https://placehold.co/400x400/fbcfe8/831843?text=Nexo+2', 'https://placehold.co/400x400/fbcfe8/831843?text=Nexo+3', 'https://placehold.co/400x400/fbcfe8/831843?text=Nexo+4', 'https://placehold.co/400x400/fbcfe8/831843?text=Nexo+5'] },
+                { id: 1, name: 'VIP колекция-бикини', originalPrice: null, price: 59.90, description: 'Топ дамски бикини от професионални дизайнери – VIP колекция Лято 2025 с изискан стил, прецизна изработка и луксозни материи за съвършена визия на плажа. Комплектът включва няколко чифта.', images: ['https://img.kwcdn.com/product/Fancyalgo/VirtualModelMatting/f644211e0493d68f97c2382b7c888029.jpg?imageView2/2/w/800/q/70/format/webp', 'https://img.kwcdn.com/product/Fancyalgo/VirtualModelMatting/994f480066dc824c3a661a4e1f4df4f5.jpg?imageView2/2/w/800/q/70/format/webp', 'https://img.kwcdn.com/product/Fancyalgo/VirtualModelMatting/81b78cb8a5c50d38bcd9b15bc929f73b.jpg?imageView2/2/w/800/q/70/format/webp', 'https://img.kwcdn.com/product/Fancyalgo/VirtualModelMatting/ada0738e3f40b2e8fc12088fea5f0ac6.jpg?imageView2/2/w/800/q/70/format/webp', 'https://img.kwcdn.com/product/Fancyalgo/VirtualModelMatting/4deb037998cca8a9d5b53ec11d6806fa.jpg?imageView2/2/w/800/q/70/format/webp'], sizes: ['XS', 'S', 'M', 'L', 'XL'] },
+                { id: 2, name: 'READY 2 PLAY бикини', originalPrice: 89.90, price: 64.99, description: 'Ready to Play бикини – свежи, удобни и стилни модели от професионални дизайнери, създадени за активни и уверени дами през 2025. Комплектът включва няколко чифта.', images: ['https://img.kwcdn.com/product/fancy/d7f09347-4de2-4f82-bbc5-8b9ef291247b.jpg?imageView2/2/w/800/q/70/format/webp', 'https://img.kwcdn.com/product/fancy/26382316-0197-4712-9872-c839515975be.jpg?imageView2/2/w/800/q/70/format/webp', 'https://img.kwcdn.com/product/fancy/6e0391e4-75ee-4cfb-9e1e-aef2aef688da.jpg?imageView2/2/w/800/q/70/format/webp', 'https://img.kwcdn.com/product/fancy/1d89bdfe-f53e-4b0d-8f20-83425b3d44f5.jpg?imageView2/2/w/800/q/70/format/webp'], sizes: ['S', 'M', 'L'] },
+                // *** CHANGE: Removed discount from "PRIVATE kolekcia" ***
+                { id: 3, name: 'PRIVATE kolekция', originalPrice: null, price: 119.90, description: 'Единствена по рода си private колекция 2025 – ексклузивни и уникални модели, създадени с внимание към всеки детайл, които комбинират изискан стил, висококачествени материи и ненадмината изработка за неповторима визия и комфорт.', images: ['https://img.kwcdn.com/product/fancy/9b72df96-7e56-41a3-ac13-68f96c3bd131.jpg?imageView2/2/w/800/q/70/format/webp', 'https://img.kwcdn.com/product/fancy/22254036-0e8b-44e4-94af-2c5fcf44ed73.jpg?imageView2/2/w/800/q/70/format/webp', 'https://img.kwcdn.com/product/fancy/9b72df96-7e56-41a3-ac13-68f96c3bd131.jpg?imageView2/2/w/800/q/70/format/webp', 'https://img.kwcdn.com/product/fancy/7a606875-f1d9-4476-9ddb-9f8b274b9674.jpg?imageView2/2/w/800/q/70/format/webp', 'https://img.kwcdn.com/product/fancy/052d7e2f-d169-46c7-9f67-0d11666458e1.jpg?imageView2/2/w/800/q/70/format/webp'], sizes: ['XS', 'S', 'M', 'L'] },
+                { id: 4, name: 'ЗА НЕГО И НЕЯ', originalPrice: null, price: 99.90, description: 'ЗА НЕГО И НЕЯ — СТИЛНИ И УДОБНИ МОДЕЛИ, СЪЗДАДЕНИ ДА ПОДЧЕРТАЯТ ИНДИВИДУАЛНОСТТА И НА ДВАМАТА. Комплектът включва няколко чифта.', images: ['https://img.kwcdn.com/product/open/ab4e4bb984854c0597fa742ca0e20d08-goods.jpeg?imageView2/2/w/800/q/70/format/webp', 'https://img.kwcdn.com/product/fancy/ec13b3d5-0729-4fa5-896f-ad639351eda2.jpg?imageView2/2/w/800/q/70/format/webp'], sizes: ['S', 'M', 'L', 'XL'] },
+                { id: 5, name: 'NEXXXO ISLAND КОЛЕКЦИЯ', originalPrice: null, price: 219.90, description: '4 броя бельо от най-новата колекция + 2 чифта комплект за нея, VIP качество и топ изработка от италиански дизайнери.', images: ['https://img.kwcdn.com/product/fancy/1322167d-c898-447d-afe5-c8108dabb281.jpg?imageView2/2/w/800/q/70/format/webp', 'https://img.kwcdn.com/product/fancy/4bb9f408-d66e-4887-ad08-ad44ffaecb6a.jpg?imageView2/2/w/800/q/70/format/webp', 'https://img.kwcdn.com/product/fancy/e5d64a46-5196-44d5-83fd-744cacf80ca5.jpg?imageView2/2/w/800/q/70/format/webp'], sizes: ['S', 'M', 'L'] },
+                { id: 6, name: 'Glamour', originalPrice: null, price: 39.90, description: 'Луксозен топ, създаден от водещи дизайнери – съчетава стил, комфорт и качество в съвършен баланс, за жени с вкус към изяществото и детайла. Комплектът включва няколко чифта.', images: ['https://img.kwcdn.com/product/fancy/37fff392-b91a-43fd-86b0-cdb64c2c5d42.jpg?imageView2/2/w/800/q/70/format/webp',' https://img.kwcdn.com/product/fancy/247dfa77-0678-4c38-9646-4a921fe5d6e1.jpg?imageView2/2/w/800/q/70/format/webp',' https://img.kwcdn.com/product/fancy/247dfa77-0678-4c38-9646-4a921fe5d6e1.jpg?imageView2/2/w/800/q/70/format/webp'], sizes: ['S', 'M', 'L'] },
+                { id: 7, name: 'Fatal Kiss', originalPrice: null, price: 49.90, description: 'Нов продукт – Luxury Edition: прецизна изработка, изключителни материали и неподражаем стил за най-взискателните. Комплектът включва няколко чифта.', images: ['https://img.kwcdn.com/product/fancy/c5715520-bf75-4d36-b5b4-f87c88ab7d99.jpg?imageView2/2/w/800/q/70/format/webp', 'https://img.kwcdn.com/product/fancy/e6921f0b-723e-47aa-b41a-a2456d75f88b.jpg?imageView2/2/w/800/q/70/format/webp'], sizes: ['XS', 'S', 'M'] },
+                { id: 8, name: 'Wild Petal', originalPrice: null, price: 29.90, description: 'Ready to Play бикини – свежи, удобни и стилни модели от професионални дизайнери, създадени за активни и уверени дами през 2025. Комплектът включва няколко чифта.', images: ['https://img.kwcdn.com/product/fancy/44c4be90-2658-4069-973a-123ac161499f.jpg?imageView2/2/w/800/q/70/format/webp', 'https://img.kwcdn.com/product/fancy/0ad139e5-d671-4338-bc3e-97db0ea918b9.jpg?imageView2/2/w/800/q/70/format/webp'], sizes: ['S', 'M', 'L'] },
+                { id: 9, name: 'Ocean Silk', originalPrice: null, price: 59.90, description: 'Единствена по рода си private колекция 2025 – ексклузивни и уникални модели, създадени с внимание към всеки детайл, които комбинират изискан стил, висококачествени материи и ненадмината изработка за неповторима визия и комфорт. Комплектът включва няколко чифта.', images: ['https://img.kwcdn.com/product/fancy/e06e1432-83b5-4136-b71d-e3ae34d35f39.jpg?imageView2/2/w/800/q/70/format/webp', 'https://img.kwcdn.com/product/fancy/dc7033bd-ea47-45f2-9813-c12f8575ef3b.jpg?imageView2/2/w/800/q/70/format/webp', 'https://img.kwcdn.com/product/fancy/e06e1432-83b5-4136-b71d-e3ae34d35f39.jpg?imageView2/2/w/800/q/70/format/webp'], sizes: ['XS', 'S', 'M'] },
+                { id: 10, name: 'All in edition', originalPrice: 89.90, price: 69.90, description: 'ЗА НЕГО И НЕЯ — СТИЛНИ И УДОБНИ МОДЕЛИ, СЪЗДАДЕНИ ДА ПОДЧЕРТАЯТ ИНДИВИДУАЛНОСТТА И НА ДВАМАТА. Комплектът включва няколко чифта.', images: ['https://img.kwcdn.com/product/fancy/049ee06f-cc7e-4d7e-987d-d46c20e8f456.jpg?imageView2/2/w/800/q/70/format/webp', 'https://img.kwcdn.com/product/fancy/390d12ef-8d6b-4dd4-aa03-498703180f49.jpg?imageView2/2/w/800/q/70/format/webp', 'https://img.kwcdn.com/product/fancy/51eb1bd1-c05a-4738-ab98-18596aa647fb.jpg?imageView2/2/w/800/q/70/format/webp'], sizes: ['S', 'M', 'L', 'XL'] },
+                { id: 11, name: 'Milky Dune', originalPrice: null, price: 59.90, description: '4 броя бельо от най-новата колекция + 2 чифта комплект за нея, VIP качество и топ изработка от италиански дизайнери.', images: ['https://img.kwcdn.com/product/fancy/fe349638-1cf7-4124-9c05-056fdfd4d331.jpg?imageView2/2/w/800/q/70/format/webp', 'https://img.kwcdn.com/product/fancy/e28e3e2e-be6b-4247-92a5-6dd2bc83fd4a.jpg?imageView2/2/w/800/q/70/format/webp', 'https://img.kwcdn.com/product/fancy/7a27a48c-4ffb-4fa3-b7f7-965f23163c65.jpg?imageView2/2/w/800/q/70/format/webp'], sizes: ['S', 'M', 'L'] },
+                { id: 12, name: 'Strawberry milk', originalPrice: null, price: 59.90, description: 'Топ дамски бикини от професионални дизайнери – VIP колекция Лято 2025 с изискан стил, прецизна изработка и луксозни материи за съвършена визия на плажа. Комплектът включва няколко чифта.', images: ['https://img.kwcdn.com/product/fancy/230bfa3d-5c43-41d9-9afc-921e882a666a.jpg?imageView2/2/w/800/q/70/format/webp', 'https://img.kwcdn.com/product/fancy/f768a95b-9285-4cca-a3ac-630352e29ea3.jpg?imageView2/2/w/800/q/70/format/webp'], sizes: ['XS', 'S', 'M', 'L'] },
             ],
             cart: [],
             currentView: 'products',
+            currentImageIndex: 0,
+            isImageTransitioning: false,
         };
 
         // --- NAVIGATION ---
@@ -295,32 +324,62 @@
             const productList = document.getElementById('product-list');
             productList.innerHTML = state.products.map(p => `
                 <div class="border border-gray-200 rounded-lg p-4 flex flex-col bg-white shadow-sm hover:shadow-lg transition-shadow cursor-pointer" onclick="viewProduct(${p.id})">
-                    <img src="${p.images[0]}" alt="${p.name}" class="rounded-md mb-4 aspect-square object-cover">
+                    <div class="overflow-hidden rounded-md mb-4">
+                       <img src="${p.images[0]}" alt="${p.name}" class="aspect-square object-cover w-full h-full transform hover:scale-105 transition-transform duration-300">
+                    </div>
                     <h3 class="font-semibold text-gray-800 flex-grow">${p.name}</h3>
-                    <p class="font-bold text-pink-600 mt-2 text-lg">${p.price.toFixed(2)} лв.</p>
+                    <p class="font-bold text-pink-600 mt-2 text-lg">
+                        ${p.originalPrice ? `<span class="old-price">${p.originalPrice.toFixed(2)} лв.</span>` : ''}
+                        ${p.price.toFixed(2)} лв.
+                    </p>
                 </div>
             `).join('');
         };
         
         const renderProductDetail = (productId) => {
             const product = state.products.find(p => p.id === productId);
+            if (!product) {
+                navigateTo('products');
+                return;
+            }
+            state.currentImageIndex = 0;
             const detailView = document.getElementById('product-detail-view');
+            
             detailView.innerHTML = `
                 <button onclick="navigateTo('products')" class="mb-4 text-pink-600 hover:underline">&larr; Обратно към продуктите</button>
                 <div class="bg-white rounded-lg shadow-md overflow-hidden">
-                    <!-- Image Gallery -->
-                    <div class="flex overflow-x-auto snap-x snap-mandatory space-x-2 rounded-lg no-scrollbar p-2 bg-gray-100">
-                        ${product.images.map(imgUrl => `
-                            <div class="snap-center flex-shrink-0 w-full h-64 sm:h-80">
-                                <img src="${imgUrl}" alt="${product.name}" class="w-full h-full object-cover rounded-md">
-                            </div>
-                        `).join('')}
+                    <div class="relative">
+                        <div class="relative w-full aspect-square flex items-center justify-center bg-gray-100">
+                           <img id="product-main-image" src="${product.images[state.currentImageIndex]}" alt="${product.name}" class="w-full h-full object-contain rounded-md">
+                           ${product.images.length > 1 ? `
+                                <button onclick="prevImage(${product.id})" class="absolute left-2 top-1/2 -translate-y-1/2 bg-black bg-opacity-40 text-white w-10 h-10 rounded-full hover:bg-opacity-60 focus:outline-none transition-all duration-200 flex items-center justify-center">
+                                    <i class="fas fa-chevron-left"></i>
+                                </button>
+                                <button onclick="nextImage(${product.id})" class="absolute right-2 top-1/2 -translate-y-1/2 bg-black bg-opacity-40 text-white w-10 h-10 rounded-full hover:bg-opacity-60 focus:outline-none transition-all duration-200 flex items-center justify-center">
+                                    <i class="fas fa-chevron-right"></i>
+                                </button>
+                            ` : ''}
+                        </div>
                     </div>
+                    
                     <div class="p-6">
                         <h2 class="text-2xl font-bold mb-2">${product.name}</h2>
                         <p class="text-gray-600 mb-4">${product.description}</p>
+                        
+                        ${product.sizes && product.sizes.length > 0 ? `
+                        <div class="mb-4">
+                            <label for="product-size" class="block text-sm font-medium text-gray-700 mb-1">Изберете размер:</label>
+                            <select id="product-size" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-pink-500 focus:border-pink-500 transition-shadow">
+                                ${product.sizes.map(size => `<option value="${size}">${size}</option>`).join('')}
+                            </select>
+                        </div>
+                        ` : ''}
+
                         <div class="flex justify-between items-center">
-                            <p class="text-3xl font-extrabold text-pink-600">${product.price.toFixed(2)} лв.</p>
+                            <p class="text-3xl font-extrabold text-pink-600">
+                                ${product.originalPrice ? `<span class="old-price text-xl">${product.originalPrice.toFixed(2)} лв.</span>` : ''}
+                                ${product.price.toFixed(2)} лв.
+                            </p>
                             <button onclick="addToCart(${product.id})" class="btn-primary">
                                 <i class="fas fa-cart-plus mr-2"></i>Добави
                             </button>
@@ -328,6 +387,42 @@
                     </div>
                 </div>
             `;
+        };
+        
+        // *** CHANGE: Enhanced image transition logic ***
+        const changeImage = (product, newIndex) => {
+            if (state.isImageTransitioning) return; // Prevent spam clicking
+            state.isImageTransitioning = true;
+            
+            const mainImage = document.getElementById('product-main-image');
+            if (mainImage) {
+                mainImage.classList.add('fade-out');
+                
+                setTimeout(() => {
+                    state.currentImageIndex = newIndex;
+                    mainImage.src = product.images[state.currentImageIndex];
+                    mainImage.onload = () => { // Wait for image to load before fading in
+                        mainImage.classList.remove('fade-out');
+                        state.isImageTransitioning = false;
+                    }
+                }, 400); // Must match CSS transition duration
+            }
+        };
+
+        window.prevImage = (productId) => {
+            const product = state.products.find(p => p.id === productId);
+            if (product && product.images.length > 0) {
+                const newIndex = (state.currentImageIndex - 1 + product.images.length) % product.images.length;
+                changeImage(product, newIndex);
+            }
+        };
+
+        window.nextImage = (productId) => {
+            const product = state.products.find(p => p.id === productId);
+            if (product && product.images.length > 0) {
+                const newIndex = (state.currentImageIndex + 1) % product.images.length;
+                changeImage(product, newIndex);
+            }
         };
 
         const renderCart = () => {
@@ -348,6 +443,7 @@
             
             cartContainer.innerHTML = state.cart.map(item => {
                 const product = state.products.find(p => p.id === item.id);
+                const sizeDisplay = item.size ? `<p class="text-xs text-gray-400">Размер: ${item.size}</p>` : '';
                 return `
                     <div class="flex items-center justify-between py-4 border-b border-gray-200">
                         <div class="flex items-center min-w-0">
@@ -355,11 +451,12 @@
                             <div class="min-w-0">
                                 <h4 class="font-semibold truncate">${product.name}</h4>
                                 <p class="text-sm text-gray-500">${product.price.toFixed(2)} лв.</p>
+                                ${sizeDisplay}
                             </div>
                         </div>
                         <div class="flex items-center flex-shrink-0">
                              <p class="font-semibold mx-4">x ${item.quantity}</p>
-                             <button onclick="removeFromCart(${item.id})" class="text-red-500 hover:text-red-700 transition">
+                             <button onclick="removeFromCart(${item.id},'${item.size}')" class="text-red-500 hover:text-red-700 transition">
                                 <i class="fas fa-trash-alt"></i>
                              </button>
                         </div>
@@ -377,7 +474,7 @@
                     <span>Общо:</span>
                     <span>${total.toFixed(2)} лв.</span>
                 </div>
-                <button onclick="navigateTo('checkout')" class="w-full mt-4 btn-primary">
+                <button onclick="navigateTo('checkout')" class="w-full mt-4 btn-primary btn-checkout">
                     Към плащане
                 </button>
             `;
@@ -409,7 +506,7 @@
                     
                     <h4 class="font-semibold mt-6 mb-2 border-b pb-2">Поръчани продукти:</h4>
                     <ul class="list-disc list-inside space-y-2 pl-5">
-                        ${orderData.cart.map(item => `<li>${item.quantity} x ${item.name}</li>`).join('')}
+                        ${orderData.cart.map(item => `<li>${item.quantity} x ${item.name} ${item.size ? `(Размер: ${item.size})` : ''}</li>`).join('')}
                     </ul>
 
                     <p class="text-right font-bold text-xl mt-4">Общо: ${total.toFixed(2)} лв.</p>
@@ -417,32 +514,66 @@
                 
                 <p class="mt-4 text-sm text-gray-500">Тази информация е записана в базата данни на Firebase.</p>
                 
-                <button onclick="navigateTo('products')" class="mt-6 btn-primary">Нова поръчка</button>
+                <button onclick="location.reload()" class="mt-6 btn-primary">Нова поръчка</button>
             `;
+        };
+        
+        // *** CHANGE: New toast notification system ***
+        let toastTimeout;
+        const showToast = (message) => {
+            const toast = document.getElementById('toast-notification');
+            const toastMessage = document.getElementById('toast-message');
+            
+            clearTimeout(toastTimeout); // Clear previous toast timeout if any
+            
+            toastMessage.textContent = message;
+            toast.classList.add('show');
+            
+            toastTimeout = setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000); // Hide after 3 seconds
         };
 
         // --- CART LOGIC ---
         window.addToCart = (productId) => {
-            const existingItem = state.cart.find(item => item.id === productId);
+            const product = state.products.find(p => p.id === productId);
+            if (!product) return;
+
+            const sizeSelect = document.getElementById('product-size');
+            const selectedSize = sizeSelect ? sizeSelect.value : null;
+
+            const existingItem = state.cart.find(item => item.id === productId && item.size === selectedSize);
             if (existingItem) {
                 existingItem.quantity++;
             } else {
-                state.cart.push({ id: productId, quantity: 1 });
+                state.cart.push({ id: productId, quantity: 1, size: selectedSize, name: product.name });
             }
             renderCart();
+            // *** CHANGE: Replaced alert with custom toast ***
+            showToast(`${product.name} е добавен в количката.`);
         };
 
-        window.removeFromCart = (productId) => {
-            state.cart = state.cart.filter(item => item.id !== productId);
+        window.removeFromCart = (productId, size) => {
+            state.cart = state.cart.filter(item => !(item.id === productId && item.size === size));
             renderCart();
         };
         
         const updateCartBubble = () => {
             const bubble = document.getElementById('cart-bubble');
             const totalItems = state.cart.reduce((sum, item) => sum + item.quantity, 0);
+            
+            const currentCount = parseInt(bubble.textContent || '0');
+
             if (totalItems > 0) {
                 bubble.textContent = totalItems;
-                bubble.classList.add('visible');
+                if (!bubble.classList.contains('visible')) {
+                    bubble.classList.add('visible');
+                }
+                // Add pop effect only when count increases
+                if (totalItems > currentCount) {
+                    bubble.style.transform = 'scale(1.2)';
+                    setTimeout(() => bubble.style.transform = 'scale(1)', 150);
+                }
             } else {
                 bubble.classList.remove('visible');
             }
@@ -458,7 +589,7 @@
         const saveOrderToFirestore = async (orderData) => {
             if (!db) {
                 console.error("Firestore is not initialized. Cannot save order.");
-                alert("Грешка: Поръчката не може да бъде запазена. Проблем с връзката с базата данни.");
+                showToast("Грешка: Поръчката не може да бъде запазена.");
                 return;
             }
             try {
@@ -470,7 +601,7 @@
                 console.log("Order saved with ID: ", docRef.id);
             } catch (e) {
                 console.error("Error adding document: ", e);
-                alert("Възникна грешка при запис на поръчката. Моля, опитайте отново.");
+                showToast("Грешка при запис на поръчката. Опитайте пак.");
             }
         };
 
@@ -489,12 +620,12 @@
                 ...customerInfo,
                 cart: state.cart.map(item => {
                     const product = state.products.find(p => p.id === item.id);
-                    // We only need to store essential info, not the whole product object again
                     return { 
                         id: product.id,
                         name: product.name,
                         price: product.price,
-                        quantity: item.quantity 
+                        quantity: item.quantity,
+                        size: item.size
                     };
                 })
             };
